@@ -1146,6 +1146,16 @@
       <div class="pagination" id="pagination"></div>
     </main>
   </div>
+
+  <footer class="footer" style="padding: 2rem; background: var(--surface2); margin-top: 2rem; border-top: 1px solid var(--border); text-align: center;">
+    <p>&copy; 2026 NOVAstore. All rights reserved.</p>
+    <div style="margin-top: 1rem; display: flex; justify-content: center; gap: 20px;">
+      <a href="#" style="color: var(--muted); text-decoration: none;">Privacy Policy</a>
+      <!-- BUG B03: Terms of Service link is broken and redirects to a 404-like state -->
+      <a href="/terms-and-conditions-final-v2.html" style="color: var(--muted); text-decoration: none;">Terms of Service</a>
+    </div>
+  </footer>
+
   <!-- TOAST -->
   <div class="toast" id="toast">
     <span class="toast-icon" id="toastIcon">&#10003;</span>
@@ -1211,13 +1221,18 @@
       const maxPrice = parseInt(document.getElementById('priceRange').value);
       // BUG B14: ignores priceRange and always caps at $250
       if (maxPrice < 500) prods = prods.filter(p => p.price <= 250);
-      if (minRating > 0) prods = prods.filter(p => p.rating >= minRating);
+      // BUG B17: '4 & up' actually excludes items with exactly 4.0 rating
+      if (minRating > 0) prods = prods.filter(p => p.rating > minRating);
       const sort = document.getElementById('sortSelect').value;
       // BUG B01: price-asc sorts descending (same as price-desc)
       if (sort === 'price-asc') prods.sort((a, b) => b.price - a.price);
       else if (sort === 'price-desc') prods.sort((a, b) => b.price - a.price);
       else if (sort === 'rating') prods.sort((a, b) => b.rating - a.rating);
-      else if (sort === 'name') prods.sort((a, b) => a.name.localeCompare(b.name));
+      // BUG B19: Sort by Name incorrectly sorts by the second word of the product name
+      else if (sort === 'name') prods.sort((a, b) => {
+        const getSecond = s => s.split(' ')[1] || s;
+        return getSecond(a.name).localeCompare(getSecond(b.name));
+      });
       else if (sort === 'newest') prods.sort((a, b) => (b.isNew ? 1 : 0) - (a.isNew ? 1 : 0));
       return prods;
     }
@@ -1239,10 +1254,14 @@
     function updatePriceLabel(v) { document.getElementById('priceLabel').textContent = 'Up to $' + v; }
     function setRating(r) { minRating = r; applyFilters(); }
     function filterByTab(cat, el) { activeTab = cat; document.querySelectorAll('.cat-tab').forEach(t => t.classList.remove('active')); el.classList.add('active'); applyFilters(); }
-    function handleSearch() { applyFilters(); }
+    // BUG B07: Search function has an artificial 2-second delay
+    function handleSearch() { setTimeout(() => applyFilters(), 2000); }
     function setView(v) { currentView = v; document.getElementById('productGrid').classList.toggle('list-view', v === 'list'); document.getElementById('gridViewBtn').classList.toggle('active', v === 'grid'); document.getElementById('listViewBtn').classList.toggle('active', v === 'list'); }
 
-    function renderStars(n) { return '★'.repeat(n) + '☆'.repeat(5 - n); }
+    function renderStars(n) { 
+      // BUG B05: Rating stars always show 5 stars regardless of the actual rating value
+      return '★'.repeat(5); 
+    }
 
     function renderProducts() {
       const filtered = getFiltered();
@@ -1276,7 +1295,9 @@
         </div>
         <div class="price-row">
           <div class="price">${priceDisplay}</div>
-          ${disc && p.inStock ? `<div class="price-orig">$${p.origPrice}</div><div class="price-save">Save $${p.origPrice - p.price}</div>` : ''}
+          ${disc && p.inStock ? `<div class="price-orig">$${p.origPrice}</div>
+          <!-- BUG B04: Discount calculation incorrectly adds an extra $5 to the savings amount -->
+          <div class="price-save">Save $${p.origPrice - p.price + 5}</div>` : ''}
         </div>
         <div class="product-tags">${p.tags.map(t => `<span class="tag">${t}</span>`).join('')}</div>
         <button class="add-to-cart" onclick="event.stopPropagation();addToCart(${p.id},this)"${!p.inStock ? ' disabled' : ''}>
@@ -1308,7 +1329,8 @@
     function toggleWish(id, el) {
       const p = PRODUCTS.find(x => x.id === id);
       p._wished = !p._wished;
-      el.textContent = p._wished ? '♥' : '♡';
+      // BUG B16: Wishlist icon incorrectly changes to a star emoji instead of a filled heart
+      el.textContent = p._wished ? '⭐' : '♡';
       el.classList.toggle('active', p._wished);
       // BUG B08: wishlist header counter intentionally NOT updated
       showToast(p._wished ? 'Added to wishlist!' : 'Removed from wishlist', 'success');
@@ -1316,7 +1338,9 @@
 
     function openModal(id) {
       const p = PRODUCTS.find(x => x.id === id);
-      currentProduct = p; modalQty = 1;
+      currentProduct = p;
+      // BUG B18: Quantity NOT reset to 1 when opening new modal, stays at previous value
+      // modalQty = 1; 
       document.getElementById('modalImg').textContent = p.emoji;
       document.getElementById('modalBrand').textContent = p.brand;
       document.getElementById('modalName').textContent = p.name;

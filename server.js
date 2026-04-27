@@ -6,7 +6,7 @@ const PORT = 8000;
 
 http.createServer((req, res) => {
     let filePath = '.' + req.url;
-    if (filePath === './') filePath = './novastore-qa.html';
+    if (filePath === './') filePath = './index.html';
 
     const extname = path.extname(filePath);
     let contentType = 'text/html';
