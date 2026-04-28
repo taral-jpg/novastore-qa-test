@@ -1007,6 +1007,113 @@
       margin-bottom: .5rem
     }
 
+    /* TIMER BADGE */
+    .timer-badge {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      background: linear-gradient(135deg, #001f3f, #004080);
+      color: #fff;
+      border-radius: 8px;
+      padding: 6px 14px;
+      font-size: 14px;
+      font-weight: 600;
+      letter-spacing: .5px;
+      box-shadow: 0 2px 10px rgba(0,0,0,.18);
+      transition: background .4s
+    }
+
+    .timer-badge.warning {
+      background: linear-gradient(135deg, #7b1a00, #c0392b)
+    }
+
+    .timer-badge .timer-icon {
+      font-size: 16px;
+      animation: pulse-icon 1.5s ease-in-out infinite
+    }
+
+    @keyframes pulse-icon {
+      0%, 100% { opacity: 1 }
+      50%       { opacity: .5 }
+    }
+
+    /* TIME-UP OVERLAY */
+    .timeup-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.92);
+      z-index: 99999;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 0
+    }
+
+    .timeup-overlay.show {
+      display: flex
+    }
+
+    .timeup-box {
+      background: #fff;
+      border-radius: 20px;
+      padding: 3rem 3.5rem;
+      text-align: center;
+      max-width: 480px;
+      width: 90vw;
+      box-shadow: 0 24px 80px rgba(0,0,0,.5);
+      animation: zoomIn .4s cubic-bezier(.175,.885,.32,1.275)
+    }
+
+    @keyframes zoomIn {
+      from { transform: scale(.75); opacity: 0 }
+      to   { transform: scale(1);   opacity: 1 }
+    }
+
+    .timeup-emoji {
+      font-size: 72px;
+      line-height: 1;
+      margin-bottom: 1rem
+    }
+
+    .timeup-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 32px;
+      font-weight: 700;
+      color: #c0392b;
+      margin-bottom: .5rem
+    }
+
+    .timeup-subtitle {
+      font-size: 16px;
+      color: #555;
+      line-height: 1.6;
+      margin-bottom: 1.75rem
+    }
+
+    .timeup-badge {
+      display: inline-block;
+      background: #fdecea;
+      color: #c0392b;
+      border: 1.5px solid #f5b7b1;
+      border-radius: 8px;
+      padding: 8px 20px;
+      font-size: 14px;
+      font-weight: 600;
+      letter-spacing: .3px
+    }
+
+    /* PAGE LOCK — applied to body after time up */
+    body.time-up {
+      pointer-events: none;
+      user-select: none
+    }
+
+    /* Keep overlay itself clickable so it stays visible */
+    .timeup-overlay {
+      pointer-events: auto !important
+    }
+
     /* RESPONSIVE */
     @media(max-width:768px) {
       .sidebar {
@@ -1045,6 +1152,10 @@
       <button class="search-btn" onclick="handleSearch(document.getElementById('searchInput').value)">Search</button>
     </div>
     <div class="header-actions">
+      <div class="timer-badge" id="timerBadge">
+        <span class="timer-icon">⏱</span>
+        <span id="timerDisplay">40:00</span>
+      </div>
       <button class="wishlist-btn">
         &#9825; Wishlist <span class="wishlist-count" id="wishlistCount">0</span>
       </button>
@@ -1155,6 +1266,19 @@
       <a href="/terms-and-conditions-final-v2.html" style="color: var(--muted); text-decoration: none;">Terms of Service</a>
     </div>
   </footer>
+
+  <!-- TIME-UP OVERLAY -->
+  <div class="timeup-overlay" id="timeupOverlay">
+    <div class="timeup-box">
+      <div class="timeup-emoji">⏰</div>
+      <div class="timeup-title">Time's Up!</div>
+      <div class="timeup-subtitle">
+        Your 40-minute QA session has ended.<br>
+        You can no longer interact with the page.
+      </div>
+      <div class="timeup-badge">🔒 Session Locked</div>
+    </div>
+  </div>
 
   <!-- TOAST -->
   <div class="toast" id="toast">
@@ -1383,6 +1507,44 @@
     }
 
     renderProducts();
+
+    // ── 40-MINUTE COUNTDOWN TIMER ──────────────────────────────────────────
+    (function startTimer() {
+      const TOTAL_SECONDS = 40 * 60; // 2400 seconds
+      let remaining = TOTAL_SECONDS;
+
+      const display  = document.getElementById('timerDisplay');
+      const badge    = document.getElementById('timerBadge');
+      const overlay  = document.getElementById('timeupOverlay');
+
+      function pad(n) { return String(n).padStart(2, '0'); }
+
+      function tick() {
+        if (remaining <= 0) {
+          display.textContent = '00:00';
+          lockPage();
+          return;
+        }
+        const mins = Math.floor(remaining / 60);
+        const secs = remaining % 60;
+        display.textContent = pad(mins) + ':' + pad(secs);
+
+        // Turn badge red when ≤ 5 minutes left
+        if (remaining <= 300) badge.classList.add('warning');
+
+        remaining--;
+        setTimeout(tick, 1000);
+      }
+
+      function lockPage() {
+        // Show the time-up popup
+        overlay.classList.add('show');
+        // Freeze all page interactions
+        document.body.classList.add('time-up');
+      }
+
+      tick();
+    })();
   </script>
 </body>
 
